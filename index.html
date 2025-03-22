@@ -16,22 +16,27 @@
       overflow: hidden;
     }
     .container {
+      position: relative;
       text-align: center;
-      padding: 20px;
+      padding: 12px 6px 12px 6px; /* Reduced from 25px by ~50% */
       background: #1e1e1e;
       border-radius: 10px;
       box-shadow: 0 0 20px rgba(0,0,0,0.8);
-      width: 90%;
-      max-width: 500px;
+      aspect-ratio: 5/3;
+      width: 320px;
       transition: background 0.5s;
     }
-    #timerDisplay { font-size: 80px; margin: 20px 0; }
+    #timerDisplay {
+      font-size: 80px;
+      margin: 10px 0; /* Reduced from 20px by 50% */
+      cursor: pointer;
+    }
     button {
       background: #333;
       border: none;
       color: #e0e0e0;
       padding: 15px 30px;
-      margin: 10px;
+      margin: 5px; /* Reduced from 10px by 50% */
       font-size: 18px;
       border-radius: 8px;
       cursor: pointer;
@@ -40,13 +45,22 @@
     button:hover { background: #444; }
     button:active { transform: scale(0.98); }
     .duration-group {
-      display: flex; flex-wrap: wrap; justify-content: center;
-      margin: 20px 0;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: 10px;
+      padding: 20px; /* Adjusted from 25px to give more even spacing */
+      width: 300px;
+      margin: 0 auto;
+      border-radius: 12px;
+      background: rgba(40, 40, 40, 0.95);
     }
     .duration-group button {
-      margin: 5px;
-      width: 40px; height: 40px;
-      font-size: 16px; padding: 0;
+      margin: 0;
+      width: 45px;
+      height: 45px;
+      font-size: 16px;
+      padding: 0;
       border-radius: 50%;
     }
     .duration-group button.active {
@@ -54,27 +68,43 @@
       color: #121212;
       font-weight: bold;
     }
-    @keyframes pulse {
-      0%,100% { background-color: rgb(70,0,0); }
-      50% { background-color: #1e1e1e; }
+    @keyframes smoothPulse {
+      0%, 100% { background-color: rgb(40, 0, 0); }
+      10%      { background-color: rgb(130, 0, 0); }
+      50%      { background-color: rgb(40, 0, 0); }
+      60%      { background-color: rgb(130, 0, 0); }
     }
-    @keyframes fastPulse {
-      0%,100% { background-color: rgb(70,0,0); }
-      50% { background-color: #1e1e1e; }
+    .pulse {
+      animation: smoothPulse 4s infinite linear;
     }
-    .pulse { animation: pulse 2s infinite; }
-    .fast-pulse { animation: fastPulse .5s infinite; }
+    .fast-pulse {
+      animation: smoothPulse 1.5s infinite linear;
+    }
+    #overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(30, 30, 30, 1.0);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      z-index: 10;
+    }
   </style>
 </head>
 <body>
   <div class="container" id="mainContainer">
-    <h1 id="modeTitle">Timer</h1>
     <div id="timerDisplay">08:00</div>
     <div>
       <button id="startPauseBtn">Start</button>
       <button id="resetBtn">Reset</button>
     </div>
-    <div class="duration-group" id="durationGroup"></div>
+    <div id="overlay">
+      <div class="duration-group" id="durationGroup"></div>
+    </div>
   </div>
 
   <script>
@@ -84,13 +114,16 @@
     let timerInterval = null;
     let running = false;
     let isPaused = false;
+    let isOverlayPaused = false; // New state to track overlay-specific pause
+    let prevRunning = false;
+    let overlayActive = false;
 
     const mainContainer = document.getElementById("mainContainer");
     const timerDisplay = document.getElementById("timerDisplay");
     const startPauseBtn = document.getElementById("startPauseBtn");
     const resetBtn = document.getElementById("resetBtn");
-    const modeTitle = document.getElementById("modeTitle");
     const durationGroup = document.getElementById("durationGroup");
+    const overlay = document.getElementById("overlay");
 
     function populateDurationButtons() {
       durationGroup.innerHTML = "";
@@ -99,15 +132,17 @@
         btn.textContent = i;
         btn.dataset.minutes = i;
         if (i === 8) btn.classList.add("active");
-        btn.addEventListener("click", () => {
-          if (!running && !isPaused) {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation(); // Prevent click from bubbling to overlay
+          if (!running || isOverlayPaused) {
             document.querySelectorAll('.duration-group button').forEach(b => b.classList.remove("active"));
             btn.classList.add("active");
             selectedDuration = parseInt(btn.dataset.minutes) * 60;
             timerDuration = selectedDuration;
             remainingTime = timerDuration;
-            updateDisplay();
-            updateBackground();
+            prevRunning = false;
+            resetTimer();
+            hideOverlay();
           }
         });
         durationGroup.appendChild(btn);
@@ -125,16 +160,19 @@
     }
 
     function updateBackground() {
-      if (isPaused && remainingTime > 0) {
+      // Only apply yellow background if explicitly paused with the pause button
+      if (isPaused && !isOverlayPaused && remainingTime > 0) {
         mainContainer.style.background = "#fbc02d";
         mainContainer.classList.remove("pulse","fast-pulse");
         return;
       }
+      
       if (remainingTime <= 0) {
         mainContainer.style.background = "#1565c0";
         mainContainer.classList.remove("pulse","fast-pulse");
         return;
       }
+      
       if (remainingTime > 120) {
         mainContainer.classList.remove("pulse","fast-pulse");
         const frac = (timerDuration - remainingTime)/(timerDuration-120);
@@ -162,15 +200,14 @@
         clearInterval(timerInterval);
         running = false;
         startPauseBtn.textContent = "Start";
-        modeTitle.textContent = "Time's Up";
       }
     }
 
     function startTimer() {
       running = true;
       isPaused = false;
+      isOverlayPaused = false;
       startPauseBtn.textContent = "Pause";
-      modeTitle.textContent = "Timer";
       timerInterval = setInterval(timerTick, 1000);
       updateBackground();
     }
@@ -178,6 +215,7 @@
     function pauseTimer() {
       running = false;
       isPaused = true;
+      isOverlayPaused = false;
       clearInterval(timerInterval);
       startPauseBtn.textContent = "Resume";
       updateBackground();
@@ -187,20 +225,72 @@
       clearInterval(timerInterval);
       running = false;
       isPaused = false;
+      isOverlayPaused = false;
       remainingTime = timerDuration;
       startPauseBtn.textContent = "Start";
-      modeTitle.textContent = "Timer";
       updateDisplay();
       updateBackground();
     }
 
-    startPauseBtn.addEventListener("click", () => {
-      if (modeTitle.textContent === "Time's Up") resetTimer();
-      if (running) pauseTimer();
-      else startTimer();
+    function pauseForOverlay() {
+      if (running) {
+        clearInterval(timerInterval);
+        isOverlayPaused = true;
+        running = false;
+      }
+    }
+
+    function showOverlay() {
+      overlay.style.display = "flex";
+      overlayActive = true;
+      pauseForOverlay();
+    }
+
+    function hideOverlay() {
+      overlay.style.display = "none";
+      overlayActive = false;
+      
+      if (prevRunning && isOverlayPaused) {
+        // Resume if it was running before overlay
+        isOverlayPaused = false;
+        startTimer();
+      } else {
+        updateBackground();
+      }
+    }
+
+    timerDisplay.addEventListener("click", (e) => {
+      e.stopPropagation(); // Prevent click from bubbling
+      prevRunning = running;
+      showOverlay();
     });
 
-    resetBtn.addEventListener("click", resetTimer);
+    // Add a click event listener to the entire document
+    document.addEventListener("click", (e) => {
+      if (overlayActive) {
+        // If the overlay is active, clicking anywhere should close it
+        hideOverlay();
+      }
+    });
+
+    // Remove the event listener from durationGroup that was stopping propagation
+    // This allows clicks in the empty spaces of the duration-group to bubble up
+
+    // Only prevent button clicks from bubbling up (handled in the button event listeners)
+
+    startPauseBtn.addEventListener("click", (e) => {
+      e.stopPropagation(); // Prevent click from bubbling
+      if (running) {
+        pauseTimer();
+      } else {
+        startTimer();
+      }
+    });
+
+    resetBtn.addEventListener("click", (e) => {
+      e.stopPropagation(); // Prevent click from bubbling
+      resetTimer();
+    });
 
     populateDurationButtons();
     updateDisplay();
