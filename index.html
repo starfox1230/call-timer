@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Modern Night Mode Timer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #121212;
+      color: #e0e0e0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .container {
+      text-align: center;
+      padding: 20px;
+      background: #1e1e1e;
+      border-radius: 10px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.8);
+      width: 90%;
+      max-width: 500px;
+      transition: background 0.5s;
+    }
+    #timerDisplay { font-size: 80px; margin: 20px 0; }
+    button {
+      background: #333;
+      border: none;
+      color: #e0e0e0;
+      padding: 15px 30px;
+      margin: 10px;
+      font-size: 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background .2s, transform .1s;
+    }
+    button:hover { background: #444; }
+    button:active { transform: scale(0.98); }
+    .duration-group {
+      display: flex; flex-wrap: wrap; justify-content: center;
+      margin: 20px 0;
+    }
+    .duration-group button {
+      margin: 5px;
+      width: 40px; height: 40px;
+      font-size: 16px; padding: 0;
+      border-radius: 50%;
+    }
+    .duration-group button.active {
+      background: #ff5722;
+      color: #121212;
+      font-weight: bold;
+    }
+    @keyframes pulse {
+      0%,100% { background-color: rgb(70,0,0); }
+      50% { background-color: #1e1e1e; }
+    }
+    @keyframes fastPulse {
+      0%,100% { background-color: rgb(70,0,0); }
+      50% { background-color: #1e1e1e; }
+    }
+    .pulse { animation: pulse 2s infinite; }
+    .fast-pulse { animation: fastPulse .5s infinite; }
+  </style>
+</head>
+<body>
+  <div class="container" id="mainContainer">
+    <h1 id="modeTitle">Timer</h1>
+    <div id="timerDisplay">08:00</div>
+    <div>
+      <button id="startPauseBtn">Start</button>
+      <button id="resetBtn">Reset</button>
+    </div>
+    <div class="duration-group" id="durationGroup"></div>
+  </div>
+
+  <script>
+    let selectedDuration = 8 * 60;
+    let timerDuration = selectedDuration;
+    let remainingTime = timerDuration;
+    let timerInterval = null;
+    let running = false;
+    let isPaused = false;
+
+    const mainContainer = document.getElementById("mainContainer");
+    const timerDisplay = document.getElementById("timerDisplay");
+    const startPauseBtn = document.getElementById("startPauseBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const modeTitle = document.getElementById("modeTitle");
+    const durationGroup = document.getElementById("durationGroup");
+
+    function populateDurationButtons() {
+      durationGroup.innerHTML = "";
+      for (let i = 1; i <= 15; i++) {
+        const btn = document.createElement("button");
+        btn.textContent = i;
+        btn.dataset.minutes = i;
+        if (i === 8) btn.classList.add("active");
+        btn.addEventListener("click", () => {
+          if (!running && !isPaused) {
+            document.querySelectorAll('.duration-group button').forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+            selectedDuration = parseInt(btn.dataset.minutes) * 60;
+            timerDuration = selectedDuration;
+            remainingTime = timerDuration;
+            updateDisplay();
+            updateBackground();
+          }
+        });
+        durationGroup.appendChild(btn);
+      }
+    }
+
+    function formatTime(sec) {
+      const m = Math.floor(sec/60).toString().padStart(2,'0');
+      const s = (sec%60).toString().padStart(2,'0');
+      return `${m}:${s}`;
+    }
+
+    function updateDisplay() {
+      timerDisplay.textContent = formatTime(remainingTime);
+    }
+
+    function updateBackground() {
+      if (isPaused && remainingTime > 0) {
+        mainContainer.style.background = "#fbc02d";
+        mainContainer.classList.remove("pulse","fast-pulse");
+        return;
+      }
+      if (remainingTime <= 0) {
+        mainContainer.style.background = "#1565c0";
+        mainContainer.classList.remove("pulse","fast-pulse");
+        return;
+      }
+      if (remainingTime > 120) {
+        mainContainer.classList.remove("pulse","fast-pulse");
+        const frac = (timerDuration - remainingTime)/(timerDuration-120);
+        const red = Math.floor(30 + frac*40);
+        const green = Math.floor(30 - frac*30);
+        const blue = Math.floor(30 - frac*30);
+        mainContainer.style.background = `rgb(${red},${green},${blue})`;
+      } else if (remainingTime > 20) {
+        mainContainer.classList.remove("fast-pulse");
+        mainContainer.classList.add("pulse");
+        mainContainer.style.background = "";
+      } else {
+        mainContainer.classList.remove("pulse");
+        mainContainer.classList.add("fast-pulse");
+        mainContainer.style.background = "";
+      }
+    }
+
+    function timerTick() {
+      if (remainingTime > 0) {
+        remainingTime--;
+        updateDisplay();
+        updateBackground();
+      } else {
+        clearInterval(timerInterval);
+        running = false;
+        startPauseBtn.textContent = "Start";
+        modeTitle.textContent = "Time's Up";
+      }
+    }
+
+    function startTimer() {
+      running = true;
+      isPaused = false;
+      startPauseBtn.textContent = "Pause";
+      modeTitle.textContent = "Timer";
+      timerInterval = setInterval(timerTick, 1000);
+      updateBackground();
+    }
+
+    function pauseTimer() {
+      running = false;
+      isPaused = true;
+      clearInterval(timerInterval);
+      startPauseBtn.textContent = "Resume";
+      updateBackground();
+    }
+
+    function resetTimer() {
+      clearInterval(timerInterval);
+      running = false;
+      isPaused = false;
+      remainingTime = timerDuration;
+      startPauseBtn.textContent = "Start";
+      modeTitle.textContent = "Timer";
+      updateDisplay();
+      updateBackground();
+    }
+
+    startPauseBtn.addEventListener("click", () => {
+      if (modeTitle.textContent === "Time's Up") resetTimer();
+      if (running) pauseTimer();
+      else startTimer();
+    });
+
+    resetBtn.addEventListener("click", resetTimer);
+
+    populateDurationButtons();
+    updateDisplay();
+    updateBackground();
+  </script>
+</body>
+</html>
