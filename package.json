@@ -4,9 +4,10 @@
   "description": "Electron app for Modern Night Mode Timer",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
     "dist": "electron-builder --publish=never"
   },
+
   "devDependencies": {
     "electron": "^25.2.0"
   }
