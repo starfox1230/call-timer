@@ -2,6 +2,7 @@
   "name": "modern-night-mode-timer",
   "version": "1.0.0",
   "description": "A simple always‑on‑top night‑mode timer built with Electron",
+  "author": "Sterling <your-email@example.com>",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -17,17 +18,11 @@
     "files": [
       "**/*"
     ],
-    "win": {
-      "target": "zip"
-    },
-    "mac": {
-      "target": "dmg"
-    },
+    "win": { "target": "zip" },
+    "mac": { "target": "dmg" },
     "linux": {
-      "target": [
-        "AppImage",
-        "deb"
-      ]
+      "target": ["AppImage", "deb"],
+      "maintainer": "Sterling <your-email@example.com>"
     }
   },
   "license": "MIT"
