@@ -1,5 +1,5 @@
 {
-  "name": "timer",
+  "name": "modern-night-mode-timer",
   "version": "1.0.0",
   "description": "A simple always‑on‑top night‑mode timer built with Electron",
   "author": "Sterling <your-email@example.com>",
@@ -14,7 +14,7 @@
   },
   "build": {
     "appId": "com.yourdomain.modern-night-mode-timer",
-    "productName": "Timer",
+    "productName": "Modern Night Mode Timer",
     "files": [
       "**/*"
     ],
