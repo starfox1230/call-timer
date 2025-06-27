@@ -303,6 +303,65 @@
     categoryMap['Ultrasound'] = ["RUQ", "Limited Abdomen", "Complete Abdomen", "OB", "Non-OB Pelvis", "Scrotal", "DVT", "Venous Extremity", "Arterial", "Other"];
     categoryMap['MRI'] = ["Spine", "Brain", "Other"];
     categoryMap['Other'] = ["MSK CT", "Other"];
+
+    function formatTime(sec, useHours = false) {
+        if (sec < 0) {
+            const absSec = Math.abs(sec);
+            const m = Math.floor(absSec / 60).toString().padStart(2, '0');
+            const s = (absSec % 60).toString().padStart(2, '0');
+            return `-${m}:${s}`;
+        }
+        const hours = Math.floor(sec / 3600);
+        const minutes = Math.floor((sec % 3600) / 60);
+        const seconds = sec % 60;
+        if (useHours) {
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+        return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    function updateBackground() {
+        // 1. Cleanup
+        container.classList.remove("pulse", "fast-pulse", "paused");
+        container.style.background = "";
+
+        // 2. Handle paused state (highest priority)
+        if (isPaused) {
+            container.classList.add("paused");
+            return;
+        }
+
+        // 3. Handle idle state (when timer is not running at all)
+        if (timerInterval === null && !currentStudy) {
+            container.style.background = "#1e1e1e";
+            return;
+        }
+        
+        // 4. Handle all running/overtime states
+        if (remainingTime > 120) {
+            const criticalWindow = timerDuration > 120 ? timerDuration - 120 : 1;
+            const timeElapsedInWindow = timerDuration - remainingTime;
+            const frac = Math.min(timeElapsedInWindow / criticalWindow, 1);
+            const red = Math.floor(30 + frac * 40);
+            const green = Math.floor(30 - frac * 30);
+            const blue = Math.floor(30 - frac * 30);
+            container.style.background = `rgb(${red},${green},${blue})`;
+        } else if (remainingTime > 20) {
+            container.classList.add("pulse");
+        } else if (remainingTime > 0) {
+            container.classList.add("fast-pulse");
+        } else { // This case handles remainingTime <= 0
+            container.style.background = "#1565c0";
+        }
+    }
+    
+    function tick() {
+        remainingTime--;
+        updateDisplay();
+        updateBackground();
+    }
+    
+    // --- All other functions are the same as the previous version ---
     
     function populateSubtypes() {
         const selectedCategory = categorySelect.value;
@@ -352,7 +411,6 @@
         customSubtypeInput.value = '';
         customSubtypeOverlay.style.display = 'none';
     }
-
     confirmCustomSubtypeBtn.addEventListener('click', confirmCustomSubtype);
     customSubtypeInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
@@ -360,14 +418,12 @@
             confirmCustomSubtype();
         }
     });
-
     customSubtypeOverlay.addEventListener('click', (e) => {
         if (e.target === customSubtypeOverlay) {
             customSubtypeInput.value = '';
             customSubtypeOverlay.style.display = 'none';
         }
     });
-
     categorySelect.addEventListener('change', () => {
         subtypeWrapper.classList.add('closed');
         setTimeout(() => {
@@ -375,9 +431,7 @@
             subtypeWrapper.classList.remove('closed');
         }, 150);
     });
-    
     document.addEventListener('DOMContentLoaded', populateSubtypes);
-    
     startStudyBtn.addEventListener('click', () => {
         const cat = categorySelect.value;
         const select = subtypeWrapper.querySelector('select');
@@ -394,7 +448,6 @@
         controlsPanel.style.display = 'flex';
         timeSelectOverlay.style.display = 'flex';
     });
-    
     document.querySelectorAll('.duration-button').forEach(btn => {
         btn.addEventListener('click', () => {
             let choiceTime = 0;
@@ -419,7 +472,6 @@
             startTimer();
         });
     });
-
     function handleStudyCompletion(status) {
         if (!currentStudy) return;
         stopTimer();
@@ -501,7 +553,7 @@
             const entryToResume = studyLog.splice(index, 1)[0];
             resumedLogEntry = { ...entryToResume, originalIndex: index };
             timerDuration = entryToResume.target;
-            remainingTime = Math.max(0, timerDuration - entryToResume.actual);
+            remainingTime = timerDuration - entryToResume.actual; // Correctly calculate remaining time
             currentStudy = {
                 cat: entryToResume.category,
                 sub: entryToResume.subtype,
@@ -531,7 +583,7 @@
         resumedLogEntry = null;
         isPaused = false;
         isHolding = false;
-        populateSubtypes(); // Reset the subtype list, including the "Other" option
+        populateSubtypes();
     }
     function toggleLogPanel() {
         const isOpen = logPanel.classList.toggle('open');
@@ -542,41 +594,17 @@
     }
     toggleLogBtn.addEventListener('click', toggleLogPanel);
     showLogFromStartBtn.addEventListener('click', toggleLogPanel);
-    function formatTime(sec, useHours = false) {
-        const hours = Math.floor(sec / 3600);
-        const minutes = Math.floor((sec % 3600) / 60);
-        const seconds = sec % 60;
-        return useHours ? `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}` : `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-    }
     function updateDisplay() { timerDisplay.textContent = formatTime(remainingTime); }
-    function updateBackground() {
-        container.classList.remove("pulse", "fast-pulse", "paused");
-        container.style.background = "";
-        if (isPaused) { container.classList.add("paused"); return; }
-        if (timerInterval === null) { container.style.background = "#1e1e1e"; return; }
-        if (remainingTime > 120) {
-            const criticalWindow = timerDuration > 120 ? timerDuration - 120 : 1;
-            const timeElapsedInWindow = timerDuration - remainingTime;
-            const frac = Math.min(timeElapsedInWindow / criticalWindow, 1);
-            const red = Math.floor(30 + frac * 40);
-            const green = Math.floor(30 - frac * 30);
-            const blue = Math.floor(30 - frac * 30);
-            container.style.background = `rgb(${red},${green},${blue})`;
-        } else if (remainingTime > 20) { container.classList.add("pulse"); } else { container.classList.add("fast-pulse"); }
-    }
-    function tick() {
-        if (remainingTime > 0) { remainingTime--; }
-        if (remainingTime <= 0) { stopTimer(); }
-        updateDisplay();
-        updateBackground();
-    }
     function startTimer() {
         if (timerInterval) return;
         isPaused = false;
         timerInterval = setInterval(tick, 1000);
         updateBackground();
     }
-    function stopTimer() { clearInterval(timerInterval); timerInterval = null; updateBackground(); }
+    function stopTimer() {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
     timerDisplay.addEventListener('click', () => {
         if (controlsPanel.style.display === 'flex') {
             const isHidden = document.querySelector('.add-time-controls').style.display === 'none';
@@ -585,12 +613,24 @@
     });
     startPauseBtn.addEventListener('click', () => {
         isPaused = !isPaused;
-        if (isPaused) { stopTimer(); startPauseBtn.textContent = 'Resume'; } else { startTimer(); startPauseBtn.textContent = 'Pause'; }
+        if (isPaused) {
+            stopTimer();
+            startPauseBtn.textContent = 'Resume';
+        } else {
+            startTimer();
+            startPauseBtn.textContent = 'Pause';
+        }
         updateBackground();
     });
     document.querySelectorAll('.add-time-controls button').forEach(btn => {
         const secondsToAdd = parseInt(btn.id.replace('add', '').replace('Btn', '')) * 60;
-        btn.addEventListener('click', () => { remainingTime += secondsToAdd; if (isPaused) { updateDisplay(); } });
+        btn.addEventListener('click', () => {
+            remainingTime += secondsToAdd;
+            if (isPaused) { 
+                updateDisplay();
+                updateBackground();
+            }
+        });
     });
     editLogBtn.addEventListener('click', () => {
         const isEditing = logPanel.classList.toggle('editing');
