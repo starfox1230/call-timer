@@ -23,7 +23,7 @@
       background: #1e1e1e;
       border-radius: 10px;
       box-shadow: 0 0 20px rgba(0,0,0,0.8);
-      width: 380px;
+      width: 420px;
       transition: background 0.5s, box-shadow 0.5s;
     }
     .container.paused {
@@ -60,29 +60,38 @@
     #studyForm {
       display: flex;
       gap: 8px;
-      align-items: flex-start; /* Align to top for checkbox list */
-    }
-    #subtypeWrapper {
-      max-height: 100px; /* Limit height of subtype area */
-      overflow-y: auto;
-      background: #2a2a2a;
-      border: 1px solid #444;
-      border-radius: 6px;
-      padding: 5px;
-      text-align: left;
-    }
-    /* Style for the select element when it's inside the wrapper */
-    #subtypeWrapper select {
+      align-items: flex-start;
       width: 100%;
     }
-    .checkbox-label {
-      display: block;
-      margin-bottom: 5px;
-      cursor: pointer;
-      font-size: 14px;
+    #studyForm > * {
+        flex-shrink: 0;
     }
-    .checkbox-label input {
-      margin-right: 8px;
+    #subtypeWrapper {
+      flex-grow: 1;
+      transition: opacity 0.28s;
+      opacity: 1;
+    }
+    #subtypeWrapper.closed {
+      opacity: 0;
+    }
+    #subtypeWrapper select {
+      width: 100%;
+      height: 120px;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      padding: 4px;
+    }
+    #subtypeWrapper select option {
+        padding: 4px 6px;
+    }
+    #subtypeWrapper select:focus, #customSubtypeModal input:focus {
+        outline: none;
+        border-color: #42a5f5;
+    }
+    #startScreenControls {
+        display: flex;
+        justify-content: center;
+        margin-top: 4px;
     }
     #controlsPanel {
         display: none;
@@ -120,46 +129,66 @@
     #logHeader button {
       display: flex; align-items: center; gap: 4px; padding: 2px 8px; font-size: 12px;
     }
-    #logHeader button svg {
-        width: 14px; height: 14px;
-    }
+    #logHeader button svg { width: 14px; height: 14px; }
     .log-entry {
       display: flex; justify-content: space-between; align-items: center;
-      padding: 4px 0; font-size: 12px; text-align: left;
+      padding: 4px 8px; font-size: 12px; text-align: left;
+      border-radius: 4px; margin-bottom: 2px;
+      transition: background-color 0.3s, color 0.3s;
     }
-    .delete-log-btn {
-      display: none; width: 22px; height: 22px; border-radius: 50%;
-      background: #4a4a4a; color: #e0e0e0; border: none; cursor: pointer;
-      flex-shrink: 0; margin-left: 8px; padding: 4px; transition: background 0.2s;
+    .log-entry.held {
+        background-color: #fbc02d;
+        color: #121212;
     }
+    .log-actions {
+        display: none;
+        gap: 6px;
+    }
+    #logPanel.editing .log-actions {
+        display: flex;
+    }
+    .log-action-btn {
+      width: 22px; height: 22px; border-radius: 50%;
+      color: #e0e0e0; border: none; cursor: pointer;
+      flex-shrink: 0; padding: 4px; transition: background-color 0.2s;
+    }
+    .delete-log-btn { background: #4a4a4a; }
     .delete-log-btn:hover { background: #e53935; }
-    .delete-log-btn svg { width: 100%; height: 100%; display: block; }
-    #logPanel.editing .delete-log-btn { display: block; }
-    #timeSelectOverlay {
+    .resume-log-btn { background: #4a4a4a; }
+    .resume-log-btn:hover { background: #4caf50; }
+    .log-action-btn svg { width: 100%; height: 100%; display: block; }
+    .overlay {
       position: absolute; top: 0; left: 0;
       width: 100%; height: 100%;
       background: rgba(30,30,30,0.95);
       display: none; align-items: center; justify-content: center;
       border-radius: 10px; z-index: 20;
     }
+    .modal-box {
+      background: #222; padding: 20px; border-radius: 8px;
+      box-shadow: 0 0 25px rgba(0, 150, 255, 0.7);
+    }
     .duration-group {
       display: grid; grid-template-columns: repeat(3, 1fr);
-      grid-gap: 10px; background: #222; padding: 20px; border-radius: 8px;
-      transition: box-shadow 0.5s;
+      grid-gap: 10px;
     }
     .duration-button {
       padding: 12px; border: none; border-radius: 6px; font-size: 16px;
       background: #333; color: #e0e0e0; cursor: pointer;
     }
     .duration-button:hover { background: #444; }
+    #customSubtypeModal h3 { margin-bottom: 12px; }
+    #customSubtypeModal input {
+        width: 100%; padding: 8px; font-size: 16px;
+        background: #333; border: 1px solid #555; border-radius: 4px;
+        color: #e0e0e0; margin-bottom: 12px;
+    }
 
     @keyframes pulseBlue {
       0%, 100% { box-shadow: 0 0 8px rgba(0,0,0,0.5); }
       50% { box-shadow: 0 0 25px rgba(0, 150, 255, 0.7); }
     }
-    .duration-group.pulse-blue-glow {
-      animation: pulseBlue 2s infinite ease-in-out;
-    }
+    #timeSelectOverlay .modal-box { animation: pulseBlue 2s infinite ease-in-out; }
     @keyframes smoothPulse {
       0%, 100% { background-color: rgb(40, 0, 0); }
       10%      { background-color: rgb(130, 0, 0); }
@@ -174,23 +203,24 @@
   <div class="container">
     <div id="timerDisplay" title="Click to toggle +/- time buttons">00:00</div>
     <div id="actionPanel">
-      <form id="studyForm">
+      <div id="studyForm">
         <select id="studyCategory">
           <option value="Body CT">Body CT</option>
           <option value="Ultrasound">Ultrasound</option>
           <option value="MRI">MRI</option>
-          <option value="Other CT">Other CT</option>
+          <option value="Other">Other</option>
         </select>
-        <div id="subtypeWrapper">
-          <!-- Subtypes populated by JS -->
-        </div>
+        <div id="subtypeWrapper"></div>
         <button type="button" id="startStudyBtn">Start Study</button>
-      </form>
+      </div>
+      <div id="startScreenControls">
+          <button id="showLogFromStartBtn" class="small">Show Log</button>
+      </div>
       <div id="controlsPanel">
         <div class="main-controls">
             <button id="startPauseBtn">Pause</button>
             <button id="toggleLogBtn" class="small">Show Log</button>
-            <button id="completeBtn" class="small">Complete Study</button>
+            <button id="completeBtn" class="small" title="Press and hold to place study on hold">Complete Study</button>
         </div>
         <div class="add-time-controls" style="display: none;">
             <button id="add1Btn" class="small">+1 min</button>
@@ -202,25 +232,34 @@
     <div id="logPanel">
         <div id="logHeader" style="display: none;">
             <button id="downloadLogBtn" title="Download log as CSV">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                 Download
             </button>
             <button id="editLogBtn">Edit</button>
         </div>
         <div id="logContent"></div>
     </div>
-    <div id="timeSelectOverlay">
-      <div class="duration-group">
-        <button class="duration-button" data-minutes="2">2</button>
-        <button class="duration-button" data-minutes="3">3</button>
-        <button class="duration-button" data-minutes="5">5</button>
-        <button class="duration-button" data-minutes="8">8</button>
-        <button class="duration-button" data-minutes="10">10</button>
-        <button class="duration-button" data-minutes="12">12</button>
-        <button class="duration-button" data-minutes="15">15</button>
-        <button class="duration-button" data-minutes="20">20</button>
-        <button class="duration-button" id="customBtn">+</button>
+    <div id="timeSelectOverlay" class="overlay">
+      <div class="modal-box">
+          <div class="duration-group">
+            <button class="duration-button" data-minutes="2">2</button>
+            <button class="duration-button" data-minutes="3">3</button>
+            <button class="duration-button" data-minutes="5">5</button>
+            <button class="duration-button" data-minutes="8">8</button>
+            <button class="duration-button" data-minutes="10">10</button>
+            <button class="duration-button" data-minutes="12">12</button>
+            <button class="duration-button" data-minutes="15">15</button>
+            <button class="duration-button" data-minutes="20">20</button>
+            <button class="duration-button" id="customBtn">+</button>
+          </div>
       </div>
+    </div>
+    <div id="customSubtypeOverlay" class="overlay">
+        <div id="customSubtypeModal" class="modal-box">
+            <h3>Enter Custom Subtype</h3>
+            <input type="text" id="customSubtypeInput" placeholder="e.g., CTA Head/Neck">
+            <button id="confirmCustomSubtypeBtn">Confirm</button>
+        </div>
     </div>
   </div>
 
@@ -234,242 +273,352 @@
     let timerDuration = 0;
     let isPaused = false;
     let selectionStartTime = null;
+    let holdTimer = null;
+    let isHolding = false;
+    let resumedLogEntry = null;
 
     const studyForm = document.getElementById('studyForm');
+    const startScreenControls = document.getElementById('startScreenControls');
     const controlsPanel = document.getElementById('controlsPanel');
     const addTimeControls = document.querySelector('.add-time-controls');
     const categorySelect = document.getElementById('studyCategory');
     const subtypeWrapper = document.getElementById('subtypeWrapper');
     const startStudyBtn = document.getElementById('startStudyBtn');
     const timeSelectOverlay = document.getElementById('timeSelectOverlay');
-    const durationGroup = document.querySelector('.duration-group');
+    const customSubtypeOverlay = document.getElementById('customSubtypeOverlay');
+    const customSubtypeInput = document.getElementById('customSubtypeInput');
+    const confirmCustomSubtypeBtn = document.getElementById('confirmCustomSubtypeBtn');
     const timerDisplay = document.getElementById('timerDisplay');
     const startPauseBtn = document.getElementById('startPauseBtn');
     const completeBtn = document.getElementById('completeBtn');
     const toggleLogBtn = document.getElementById('toggleLogBtn');
+    const showLogFromStartBtn = document.getElementById('showLogFromStartBtn');
     const logPanel = document.getElementById('logPanel');
     const logHeader = document.getElementById('logHeader');
     const downloadLogBtn = document.getElementById('downloadLogBtn');
     const editLogBtn = document.getElementById('editLogBtn');
     const logContent = document.getElementById('logContent');
-
-    categoryMap['Body CT'] = ["Abdomen/Pelvis","Chest","CAP","A/P Runoff","GI Bleed","Dissection Protocol","Other"];
-    categoryMap['Ultrasound'] = ["RUQ","Limited Abdomen","Complete Abdomen","OB","Non-OB Pelvis","Scrotal","DVT","Venous Extremity","Arterial","Other"];
-    categoryMap['MRI'] = ["Spine","Brain","Other"];
-    categoryMap['Other CT'] = ["MSK","Other"];
-
+    
+    categoryMap['Body CT'] = ["Abdomen/Pelvis", "Chest", "CAP", "A/P Runoff", "GI Bleed", "Dissection Protocol", "Other"];
+    categoryMap['Ultrasound'] = ["RUQ", "Limited Abdomen", "Complete Abdomen", "OB", "Non-OB Pelvis", "Scrotal", "DVT", "Venous Extremity", "Arterial", "Other"];
+    categoryMap['MRI'] = ["Spine", "Brain", "Other"];
+    categoryMap['Other'] = ["MSK CT", "Other"];
+    
     function populateSubtypes() {
-      const selectedCategory = categorySelect.value;
-      const opts = categoryMap[selectedCategory] || [];
-      subtypeWrapper.innerHTML = ''; // Clear previous content
-
-      if (selectedCategory === 'Body CT') {
-        // Create checkboxes for Body CT
-        opts.forEach(o => {
-          const label = document.createElement('label');
-          label.className = 'checkbox-label';
-          
-          const checkbox = document.createElement('input');
-          checkbox.type = 'checkbox';
-          checkbox.value = o;
-          
-          label.appendChild(checkbox);
-          label.appendChild(document.createTextNode(o));
-          subtypeWrapper.appendChild(label);
-        });
-      } else {
-        // Create a standard select dropdown for other categories
+        const selectedCategory = categorySelect.value;
+        const opts = categoryMap[selectedCategory] || [];
+        subtypeWrapper.innerHTML = '';
         const select = document.createElement('select');
+        select.multiple = true;
         select.disabled = opts.length === 0;
         opts.forEach(o => {
-          const opt = document.createElement('option');
-          opt.value = o;
-          opt.text = o;
-          select.appendChild(opt);
+            const opt = document.createElement('option');
+            opt.value = o;
+            opt.text = o;
+            if (o === 'Other') {
+                opt.dataset.baseValue = 'other';
+            }
+            select.appendChild(opt);
+        });
+        select.addEventListener('change', (e) => {
+            const lastSelected = e.target.options[e.target.selectedIndex];
+            if (lastSelected && lastSelected.dataset.baseValue === 'other') {
+                customSubtypeInput.value = (lastSelected.value !== 'Other') ? lastSelected.value : '';
+                customSubtypeOverlay.style.display = 'flex';
+                customSubtypeInput.focus();
+                customSubtypeInput.select();
+            }
         });
         subtypeWrapper.appendChild(select);
-      }
     }
     
-    categorySelect.addEventListener('change', populateSubtypes);
-    document.addEventListener('DOMContentLoaded', populateSubtypes);
-
-    startStudyBtn.addEventListener('click', () => {
-      const cat = categorySelect.value;
-      let sub = '';
-
-      if (cat === 'Body CT') {
-        const checkedBoxes = subtypeWrapper.querySelectorAll('input[type="checkbox"]:checked');
-        if (checkedBoxes.length === 0) {
-          alert("Please select at least one Body CT subtype.");
-          return;
-        }
-        sub = Array.from(checkedBoxes).map(cb => cb.value).join(' + ');
-      } else {
+    function confirmCustomSubtype() {
+        const customText = customSubtypeInput.value.trim();
         const select = subtypeWrapper.querySelector('select');
-        sub = select ? select.value : '';
-      }
-      
-      if (!cat || !sub) {
-        alert("A valid category and subtype must be selected.");
-        return;
-      }
-      currentStudy = { cat, sub, start: Date.now() };
-      selectionStartTime = Date.now();
-      studyForm.style.display = 'none';
-      controlsPanel.style.display = 'flex';
-      timeSelectOverlay.style.display = 'flex';
-      durationGroup.classList.add('pulse-blue-glow');
+        if (select) {
+            const otherOption = select.querySelector('option[data-base-value="other"]');
+            if (otherOption) {
+                if (customText) {
+                    otherOption.text = `Other - ${customText}`;
+                    otherOption.value = customText;
+                    otherOption.selected = true;
+                } else {
+                    otherOption.text = "Other";
+                    otherOption.value = "Other";
+                    otherOption.selected = false;
+                }
+            }
+        }
+        customSubtypeInput.value = '';
+        customSubtypeOverlay.style.display = 'none';
+    }
+
+    confirmCustomSubtypeBtn.addEventListener('click', confirmCustomSubtype);
+    customSubtypeInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            confirmCustomSubtype();
+        }
     });
 
-    // --- All other functions remain unchanged ---
-    // (Pasting them here for completeness)
+    customSubtypeOverlay.addEventListener('click', (e) => {
+        if (e.target === customSubtypeOverlay) {
+            customSubtypeInput.value = '';
+            customSubtypeOverlay.style.display = 'none';
+        }
+    });
 
+    categorySelect.addEventListener('change', () => {
+        subtypeWrapper.classList.add('closed');
+        setTimeout(() => {
+            populateSubtypes();
+            subtypeWrapper.classList.remove('closed');
+        }, 150);
+    });
+    
+    document.addEventListener('DOMContentLoaded', populateSubtypes);
+    
+    startStudyBtn.addEventListener('click', () => {
+        const cat = categorySelect.value;
+        const select = subtypeWrapper.querySelector('select');
+        const selectedSubtypes = select ? Array.from(select.selectedOptions).map(opt => opt.value) : [];
+        if (selectedSubtypes.length === 0) {
+            alert("Please select at least one subtype.");
+            return;
+        }
+        const sub = selectedSubtypes.join(' + ');
+        currentStudy = { cat, sub, start: Date.now(), timeSpentSoFar: 0 };
+        selectionStartTime = Date.now();
+        studyForm.style.display = 'none';
+        startScreenControls.style.display = 'none';
+        controlsPanel.style.display = 'flex';
+        timeSelectOverlay.style.display = 'flex';
+    });
+    
     document.querySelectorAll('.duration-button').forEach(btn => {
-      btn.addEventListener('click', () => {
-        let choiceTime = 0;
-        if (btn.id === 'customBtn') {
-            const minutesStr = prompt('Enter custom minutes:');
-            if (minutesStr === null) return;
-            const minutes = parseInt(minutesStr, 10);
-            if (isNaN(minutes) || minutes <= 0) { alert("Please enter a valid positive number."); return; }
-            choiceTime = minutes * 60;
-        } else { choiceTime = parseInt(btn.dataset.minutes, 10) * 60; }
-        const decisionDelay = Math.floor((Date.now() - selectionStartTime) / 1000);
-        timerDuration = choiceTime;
-        remainingTime = Math.max(choiceTime - decisionDelay, 0);
-        updateDisplay();
-        timeSelectOverlay.style.display = 'none';
-        durationGroup.classList.remove('pulse-blue-glow');
-        startPauseBtn.textContent = 'Pause';
-        startTimer();
-      });
+        btn.addEventListener('click', () => {
+            let choiceTime = 0;
+            if (btn.id === 'customBtn') {
+                const minutesStr = prompt('Enter custom minutes:');
+                if (minutesStr === null) return;
+                const minutes = parseInt(minutesStr, 10);
+                if (isNaN(minutes) || minutes <= 0) {
+                    alert("Please enter a valid positive number.");
+                    return;
+                }
+                choiceTime = minutes * 60;
+            } else {
+                choiceTime = parseInt(btn.dataset.minutes, 10) * 60;
+            }
+            const decisionDelay = Math.floor((Date.now() - selectionStartTime) / 1000);
+            timerDuration = choiceTime;
+            remainingTime = Math.max(choiceTime - decisionDelay, 0);
+            updateDisplay();
+            timeSelectOverlay.style.display = 'none';
+            startPauseBtn.textContent = 'Pause';
+            startTimer();
+        });
     });
-    function formatTime(sec, useHours = false) {
-      const hours = Math.floor(sec / 3600);
-      const minutes = Math.floor((sec % 3600) / 60);
-      const seconds = sec % 60;
-      if (useHours) {
-        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-      }
-      return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-    };
-    function updateDisplay() { timerDisplay.textContent = formatTime(remainingTime); };
-    function updateBackground() {
-      container.classList.remove("pulse", "fast-pulse", "paused");
-      container.style.background = ""; 
-      if (isPaused) { container.classList.add("paused"); return; }
-      if (timerInterval === null) { container.style.background = "#1e1e1e"; return; }
-      if (remainingTime > 120) {
-        const criticalWindow = timerDuration > 120 ? timerDuration - 120 : 1;
-        const timeElapsedInWindow = timerDuration - remainingTime;
-        const frac = Math.min(timeElapsedInWindow / criticalWindow, 1);
-        const red = Math.floor(30 + frac * 40);
-        const green = Math.floor(30 - frac * 30);
-        const blue = Math.floor(30 - frac * 30);
-        container.style.background = `rgb(${red},${green},${blue})`;
-      } else if (remainingTime > 20) { container.classList.add("pulse");
-      } else { container.classList.add("fast-pulse"); }
-    };
-    function tick() {
-      if (remainingTime > 0) { remainingTime--; }
-      if (remainingTime <= 0) { stopTimer(); }
-      updateDisplay(); updateBackground();
-    };
-    function startTimer() {
-      if (timerInterval) return;
-      isPaused = false;
-      timerInterval = setInterval(tick, 1000);
-      updateBackground();
-    };
-    function stopTimer() { clearInterval(timerInterval); timerInterval = null; updateBackground(); };
+
+    function handleStudyCompletion(status) {
+        if (!currentStudy) return;
+        stopTimer();
+        const finishTime = Date.now();
+        const newTimeElapsed = Math.floor((finishTime - currentStudy.start) / 1000);
+        const totalActualSec = (currentStudy.timeSpentSoFar || 0) + newTimeElapsed;
+        const logEntry = {
+            category: currentStudy.cat,
+            subtype: currentStudy.sub,
+            startTime: resumedLogEntry ? resumedLogEntry.startTime : currentStudy.start,
+            finishTime: finishTime,
+            target: timerDuration,
+            actual: totalActualSec,
+            status: status
+        };
+        if (resumedLogEntry) {
+            studyLog.splice(resumedLogEntry.originalIndex, 0, logEntry);
+        } else {
+            studyLog.push(logEntry);
+        }
+        renderLog();
+        if (logPanel.classList.contains('open')) { logPanel.classList.remove('open'); }
+        addTimeControls.style.display = 'none';
+        resetUI();
+    }
+    completeBtn.addEventListener('mousedown', (e) => {
+        isHolding = false;
+        holdTimer = setTimeout(() => {
+            isHolding = true;
+            handleStudyCompletion('held');
+        }, 1000);
+    });
+    completeBtn.addEventListener('mouseup', (e) => {
+        clearTimeout(holdTimer);
+        if (!isHolding) {
+            handleStudyCompletion('completed');
+        }
+    });
+    completeBtn.addEventListener('mouseleave', () => clearTimeout(holdTimer));
+    function renderLog() {
+        logContent.innerHTML = '';
+        logHeader.style.display = studyLog.length > 0 ? 'flex' : 'none';
+        studyLog.forEach((s, i) => {
+            const entryDiv = document.createElement('div');
+            entryDiv.className = 'log-entry';
+            if (s.status === 'held') { entryDiv.classList.add('held'); }
+            const textSpan = document.createElement('span');
+            textSpan.textContent = `${i + 1}. ${s.category} / ${s.subtype} — target ${formatTime(s.target)}, actual ${formatTime(s.actual)}`;
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'log-actions';
+            const resumeBtn = document.createElement('button');
+            resumeBtn.className = 'log-action-btn resume-log-btn';
+            resumeBtn.title = 'Resume this study';
+            resumeBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
+            resumeBtn.dataset.index = i;
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'log-action-btn delete-log-btn';
+            deleteBtn.title = 'Delete entry';
+            deleteBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
+            deleteBtn.dataset.index = i;
+            actionsDiv.appendChild(resumeBtn);
+            actionsDiv.appendChild(deleteBtn);
+            entryDiv.appendChild(textSpan);
+            entryDiv.appendChild(actionsDiv);
+            logContent.appendChild(entryDiv);
+        });
+    }
+    logContent.addEventListener('click', (e) => {
+        const resumeButton = e.target.closest('.resume-log-btn');
+        const deleteButton = e.target.closest('.delete-log-btn');
+        if (deleteButton) {
+            const index = parseInt(deleteButton.dataset.index, 10);
+            studyLog.splice(index, 1);
+            renderLog();
+            return;
+        }
+        if (resumeButton) {
+            const index = parseInt(resumeButton.dataset.index, 10);
+            const entryToResume = studyLog.splice(index, 1)[0];
+            resumedLogEntry = { ...entryToResume, originalIndex: index };
+            timerDuration = entryToResume.target;
+            remainingTime = Math.max(0, timerDuration - entryToResume.actual);
+            currentStudy = {
+                cat: entryToResume.category,
+                sub: entryToResume.subtype,
+                start: Date.now(),
+                timeSpentSoFar: entryToResume.actual
+            };
+            studyForm.style.display = 'none';
+            startScreenControls.style.display = 'none';
+            controlsPanel.style.display = 'flex';
+            isPaused = false;
+            startPauseBtn.textContent = 'Pause';
+            updateDisplay();
+            startTimer();
+            logPanel.classList.remove('open');
+            editLogBtn.click();
+        }
+    });
     function resetUI() {
         stopTimer();
         studyForm.style.display = 'flex';
+        startScreenControls.style.display = 'flex';
         controlsPanel.style.display = 'none';
         timerDisplay.textContent = '00:00';
         container.classList.remove('paused', 'pulse', 'fast-pulse');
         container.style.background = '#1e1e1e';
-        currentStudy = null; isPaused = false;
-    };
-    timerDisplay.addEventListener('click', () => {
-        if (controlsPanel.style.display === 'flex') {
-            const isHidden = addTimeControls.style.display === 'none';
-            addTimeControls.style.display = isHidden ? 'flex' : 'none';
-        }
-    });
-    completeBtn.addEventListener('click', () => {
-      if (!currentStudy) return;
-      stopTimer();
-      const finishTime = Date.now();
-      const actualSec = Math.floor((finishTime - currentStudy.start) / 1000);
-      const targetSec = timerDuration;
-      studyLog.push({ category: currentStudy.cat, subtype: currentStudy.sub, startTime: currentStudy.start, finishTime: finishTime, target: targetSec, actual: actualSec });
-      renderLog();
-      if (logPanel.classList.contains('open')) { logPanel.classList.remove('open'); }
-      addTimeControls.style.display = 'none'; 
-      resetUI();
-    });
-    startPauseBtn.addEventListener('click', () => {
-      isPaused = !isPaused;
-      if (isPaused) { stopTimer(); startPauseBtn.textContent = 'Resume';
-      } else { startTimer(); startPauseBtn.textContent = 'Pause'; }
-      updateBackground();
-    });
-    document.querySelectorAll('.add-time-controls button').forEach(btn => {
-        const secondsToAdd = parseInt(btn.id.replace('add','').replace('Btn','')) * 60;
-        btn.addEventListener('click', () => { remainingTime += secondsToAdd; if (isPaused) { updateDisplay(); } });
-    });
-    toggleLogBtn.addEventListener('click', () => {
+        currentStudy = null;
+        resumedLogEntry = null;
+        isPaused = false;
+        isHolding = false;
+        populateSubtypes(); // Reset the subtype list, including the "Other" option
+    }
+    function toggleLogPanel() {
         const isOpen = logPanel.classList.toggle('open');
         if (!isOpen && logPanel.classList.contains('editing')) {
-            logPanel.classList.remove('editing'); editLogBtn.textContent = 'Edit';
+            logPanel.classList.remove('editing');
+            editLogBtn.textContent = 'Edit';
         }
+    }
+    toggleLogBtn.addEventListener('click', toggleLogPanel);
+    showLogFromStartBtn.addEventListener('click', toggleLogPanel);
+    function formatTime(sec, useHours = false) {
+        const hours = Math.floor(sec / 3600);
+        const minutes = Math.floor((sec % 3600) / 60);
+        const seconds = sec % 60;
+        return useHours ? `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}` : `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+    function updateDisplay() { timerDisplay.textContent = formatTime(remainingTime); }
+    function updateBackground() {
+        container.classList.remove("pulse", "fast-pulse", "paused");
+        container.style.background = "";
+        if (isPaused) { container.classList.add("paused"); return; }
+        if (timerInterval === null) { container.style.background = "#1e1e1e"; return; }
+        if (remainingTime > 120) {
+            const criticalWindow = timerDuration > 120 ? timerDuration - 120 : 1;
+            const timeElapsedInWindow = timerDuration - remainingTime;
+            const frac = Math.min(timeElapsedInWindow / criticalWindow, 1);
+            const red = Math.floor(30 + frac * 40);
+            const green = Math.floor(30 - frac * 30);
+            const blue = Math.floor(30 - frac * 30);
+            container.style.background = `rgb(${red},${green},${blue})`;
+        } else if (remainingTime > 20) { container.classList.add("pulse"); } else { container.classList.add("fast-pulse"); }
+    }
+    function tick() {
+        if (remainingTime > 0) { remainingTime--; }
+        if (remainingTime <= 0) { stopTimer(); }
+        updateDisplay();
+        updateBackground();
+    }
+    function startTimer() {
+        if (timerInterval) return;
+        isPaused = false;
+        timerInterval = setInterval(tick, 1000);
+        updateBackground();
+    }
+    function stopTimer() { clearInterval(timerInterval); timerInterval = null; updateBackground(); }
+    timerDisplay.addEventListener('click', () => {
+        if (controlsPanel.style.display === 'flex') {
+            const isHidden = document.querySelector('.add-time-controls').style.display === 'none';
+            document.querySelector('.add-time-controls').style.display = isHidden ? 'flex' : 'none';
+        }
+    });
+    startPauseBtn.addEventListener('click', () => {
+        isPaused = !isPaused;
+        if (isPaused) { stopTimer(); startPauseBtn.textContent = 'Resume'; } else { startTimer(); startPauseBtn.textContent = 'Pause'; }
+        updateBackground();
+    });
+    document.querySelectorAll('.add-time-controls button').forEach(btn => {
+        const secondsToAdd = parseInt(btn.id.replace('add', '').replace('Btn', '')) * 60;
+        btn.addEventListener('click', () => { remainingTime += secondsToAdd; if (isPaused) { updateDisplay(); } });
     });
     editLogBtn.addEventListener('click', () => {
         const isEditing = logPanel.classList.toggle('editing');
         editLogBtn.textContent = isEditing ? 'Done' : 'Edit';
     });
-    logContent.addEventListener('click', (e) => {
-        const deleteButton = e.target.closest('.delete-log-btn');
-        if (deleteButton) {
-            const index = parseInt(deleteButton.dataset.index, 10);
-            studyLog.splice(index, 1); renderLog();
-        }
-    });
-    function renderLog() {
-        logContent.innerHTML = '';
-        logHeader.style.display = studyLog.length > 0 ? 'flex' : 'none';
-        studyLog.forEach((s, i) => {
-            const entryDiv = document.createElement('div'); entryDiv.className = 'log-entry';
-            const textSpan = document.createElement('span'); textSpan.className = 'log-entry-text';
-            textSpan.textContent = `${i + 1}. ${s.category} / ${s.subtype} — target ${formatTime(s.target)}, actual ${formatTime(s.actual)}`;
-            const deleteBtn = document.createElement('button'); deleteBtn.className = 'delete-log-btn';
-            deleteBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
-            deleteBtn.dataset.index = i; deleteBtn.title = "Delete entry";
-            entryDiv.appendChild(textSpan); entryDiv.appendChild(deleteBtn); logContent.appendChild(entryDiv);
-        });
-    };
     function escapeCSV(field) {
         if (field === null || field === undefined) return '';
         let str = String(field);
         if (str.search(/("|,|\n)/g) >= 0) { str = '"' + str.replace(/"/g, '""') + '"'; }
         return str;
-    };
+    }
     function downloadCSV() {
         if (studyLog.length === 0) { alert("Log is empty. Nothing to download."); return; }
-        const headers = ['Category', 'Subtype', 'Start Time', 'Finish Time', 'Target Duration', 'Actual Duration', 'Performance (%)'];
-        const rows = studyLog.map(log => {
+        const headers = ['Entry #', 'Category', 'Subtype', 'Start Time', 'Finish Time', 'Target Duration', 'Actual Duration', 'Performance (%)', 'Status'];
+        const rows = studyLog.map((log, index) => {
             const performance = log.target > 0 ? (((log.actual - log.target) / log.target) * 100).toFixed(1) : 'N/A';
-            return [log.category, log.subtype, new Date(log.startTime).toLocaleString(), new Date(log.finishTime).toLocaleString(), formatTime(log.target, true), formatTime(log.actual, true), performance].map(escapeCSV);
+            return [index + 1, log.category, log.subtype, new Date(log.startTime).toLocaleString(), new Date(log.finishTime).toLocaleString(), formatTime(log.target, true), formatTime(log.actual, true), performance, log.status].map(escapeCSV);
         });
         let csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n" + rows.map(e => e.join(",")).join("\n");
         const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a"); link.setAttribute("href", encodedUri);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
         const timestamp = new Date().toISOString().split('T')[0];
         link.setAttribute("download", `study_log_${timestamp}.csv`);
-        document.body.appendChild(link); link.click(); document.body.removeChild(link);
-    };
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
     downloadLogBtn.addEventListener('click', downloadCSV);
 </script>
 </body>
