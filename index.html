@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Timer / Stopwatch</title>
+  <title>Study Timer Tracker</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -14,573 +14,463 @@
       justify-content: center;
       height: 100vh;
       overflow: hidden;
-      user-select: none; /* Prevent text selection during hold */
-      -webkit-user-select: none; /* Safari */
-      -ms-user-select: none; /* IE 10+ */
+      user-select: none;
     }
     .container {
       position: relative;
       text-align: center;
-      padding: 12px 6px 12px 6px;
+      padding: 12px;
       background: #1e1e1e;
       border-radius: 10px;
       box-shadow: 0 0 20px rgba(0,0,0,0.8);
-      aspect-ratio: 5/3;
-      width: 320px;
-      transition: background 0.5s;
+      width: 380px;
+      transition: background 0.5s, box-shadow 0.5s;
     }
-    /* Stopwatch mode specific background */
-    .container.stopwatch-mode {
-       background: #4a148c; /* Deep Night Mode Purple */
+    .container.paused {
+      background: #fbc02d;
     }
-    /* Pause state background (used by both modes) */
-    .container.paused-state {
-        background: #fbc02d; /* Paused yellow */
+    .container.paused #timerDisplay {
+      color: #000;
     }
-    #timerDisplay {
-      font-size: 80px;
-      margin: 10px 0;
-      cursor: pointer;
-      position: relative;
-      z-index: 1;
-    }
-    button {
+    select, button {
       background: #333;
       border: none;
       color: #e0e0e0;
-      padding: 15px 30px;
-      margin: 5px;
-      font-size: 18px;
-      border-radius: 8px;
+      padding: 8px;
+      font-size: 14px;
+      border-radius: 6px;
       cursor: pointer;
-      transition: background .2s, transform .1s;
+      transition: background 0.2s;
     }
-    button:hover { background: #444; }
-    button:active { transform: scale(0.98); }
-    #overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(30, 30, 30, 1.0); /* Opaque background */
-      display: none; /* Initially hidden */
-      align-items: center;
+    select:disabled { background: #2a2a2a; cursor: default; }
+    select:hover:not(:disabled), button:hover { background: #444; }
+    #timerDisplay {
+      font-size: 64px;
+      margin: 8px 0;
+      cursor: pointer;
+    }
+    #actionPanel {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
       justify-content: center;
-      border-radius: 10px; /* Match container */
-      z-index: 10; /* Above main content */
-      cursor: pointer; /* Indicate the background is clickable */
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    #studyForm {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start; /* Align to top for checkbox list */
+    }
+    #subtypeWrapper {
+      max-height: 100px; /* Limit height of subtype area */
+      overflow-y: auto;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 6px;
+      padding: 5px;
+      text-align: left;
+    }
+    /* Style for the select element when it's inside the wrapper */
+    #subtypeWrapper select {
+      width: 100%;
+    }
+    .checkbox-label {
+      display: block;
+      margin-bottom: 5px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .checkbox-label input {
+      margin-right: 8px;
+    }
+    #controlsPanel {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+    }
+    .main-controls, .add-time-controls {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+    .main-controls button.small {
+      padding: 6px 12px;
+      font-size: 14px;
+    }
+    #logPanel {
+      max-height: 0;
+      overflow-y: auto;
+      transition: max-height 0.3s ease, padding 0.3s ease;
+      margin-top: 8px;
+      background: #222;
+      padding: 0 8px;
+      border-radius: 6px;
+    }
+    #logPanel.open { max-height: 200px; padding: 8px; }
+    #logHeader {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #333;
+      margin-bottom: 4px;
+    }
+    #logHeader button {
+      display: flex; align-items: center; gap: 4px; padding: 2px 8px; font-size: 12px;
+    }
+    #logHeader button svg {
+        width: 14px; height: 14px;
+    }
+    .log-entry {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 4px 0; font-size: 12px; text-align: left;
+    }
+    .delete-log-btn {
+      display: none; width: 22px; height: 22px; border-radius: 50%;
+      background: #4a4a4a; color: #e0e0e0; border: none; cursor: pointer;
+      flex-shrink: 0; margin-left: 8px; padding: 4px; transition: background 0.2s;
+    }
+    .delete-log-btn:hover { background: #e53935; }
+    .delete-log-btn svg { width: 100%; height: 100%; display: block; }
+    #logPanel.editing .delete-log-btn { display: block; }
+    #timeSelectOverlay {
+      position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(30,30,30,0.95);
+      display: none; align-items: center; justify-content: center;
+      border-radius: 10px; z-index: 20;
     }
     .duration-group {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      grid-template-rows: repeat(3, 1fr);
-      gap: 10px;
-      padding: 20px;
-      width: 300px;
-      margin: 0 auto;
-      border-radius: 12px;
-      background: rgba(40, 40, 40, 0.95); /* Slightly different background for the group */
-      position: relative;
-      cursor: default; /* Reset cursor for the group itself */
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      grid-gap: 10px; background: #222; padding: 20px; border-radius: 8px;
+      transition: box-shadow 0.5s;
     }
-    .duration-group button {
-      margin: 0;
-      width: 45px;
-      height: 45px;
-      font-size: 16px;
-      padding: 0;
-      border-radius: 50%;
-      position: relative;
-      overflow: hidden;
-      cursor: pointer; /* Ensure buttons have pointer cursor */
+    .duration-button {
+      padding: 12px; border: none; border-radius: 6px; font-size: 16px;
+      background: #333; color: #e0e0e0; cursor: pointer;
     }
-    .duration-group button.active {
-      background: #ff5722;
-      color: #121212;
-      font-weight: bold;
-    }
+    .duration-button:hover { background: #444; }
 
-    /* Style for the input field replacing the button number */
-    .duration-input {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        font-size: 16px;
-        text-align: center;
-        border: 1px solid #ff5722;
-        background-color: #333;
-        color: #e0e0e0;
-        border-radius: 50%;
-        box-sizing: border-box;
-        padding: 0;
-        outline: none;
-        z-index: 11; /* Above button content */
-        cursor: text; /* Indicate text input */
-        /* Remove spinners for number input */
-        -moz-appearance: textfield;
+    @keyframes pulseBlue {
+      0%, 100% { box-shadow: 0 0 8px rgba(0,0,0,0.5); }
+      50% { box-shadow: 0 0 25px rgba(0, 150, 255, 0.7); }
     }
-    .duration-input::-webkit-outer-spin-button,
-    .duration-input::-webkit-inner-spin-button {
-        -webkit-appearance: none;
-        margin: 0;
+    .duration-group.pulse-blue-glow {
+      animation: pulseBlue 2s infinite ease-in-out;
     }
-
-    /* Make button span text invisible when editing */
-    .duration-group button.editing span {
-        visibility: hidden;
-    }
-
-    /* Timer pulse animations */
     @keyframes smoothPulse {
       0%, 100% { background-color: rgb(40, 0, 0); }
       10%      { background-color: rgb(130, 0, 0); }
       50%      { background-color: rgb(40, 0, 0); }
       60%      { background-color: rgb(130, 0, 0); }
     }
-    .pulse {
-      animation: smoothPulse 4s infinite linear;
-    }
-    .fast-pulse {
-      animation: smoothPulse 1.5s infinite linear;
-    }
+    .pulse { animation: smoothPulse 4s infinite linear; }
+    .fast-pulse { animation: smoothPulse 1.5s infinite linear; }
   </style>
 </head>
 <body>
-  <div class="container" id="mainContainer">
-    <div id="timerDisplay">08:00</div>
-    <div>
-      <button id="startPauseBtn">Start</button>
-      <button id="resetBtn">Reset</button>
+  <div class="container">
+    <div id="timerDisplay" title="Click to toggle +/- time buttons">00:00</div>
+    <div id="actionPanel">
+      <form id="studyForm">
+        <select id="studyCategory">
+          <option value="Body CT">Body CT</option>
+          <option value="Ultrasound">Ultrasound</option>
+          <option value="MRI">MRI</option>
+          <option value="Other CT">Other CT</option>
+        </select>
+        <div id="subtypeWrapper">
+          <!-- Subtypes populated by JS -->
+        </div>
+        <button type="button" id="startStudyBtn">Start Study</button>
+      </form>
+      <div id="controlsPanel">
+        <div class="main-controls">
+            <button id="startPauseBtn">Pause</button>
+            <button id="toggleLogBtn" class="small">Show Log</button>
+            <button id="completeBtn" class="small">Complete Study</button>
+        </div>
+        <div class="add-time-controls" style="display: none;">
+            <button id="add1Btn" class="small">+1 min</button>
+            <button id="add2Btn" class="small">+2 min</button>
+            <button id="add5Btn" class="small">+5 min</button>
+        </div>
+      </div>
     </div>
-    <div id="overlay">
-      <div class="duration-group" id="durationGroup">
-         <!-- Duration buttons will be populated here -->
+    <div id="logPanel">
+        <div id="logHeader" style="display: none;">
+            <button id="downloadLogBtn" title="Download log as CSV">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                Download
+            </button>
+            <button id="editLogBtn">Edit</button>
+        </div>
+        <div id="logContent"></div>
+    </div>
+    <div id="timeSelectOverlay">
+      <div class="duration-group">
+        <button class="duration-button" data-minutes="2">2</button>
+        <button class="duration-button" data-minutes="3">3</button>
+        <button class="duration-button" data-minutes="5">5</button>
+        <button class="duration-button" data-minutes="8">8</button>
+        <button class="duration-button" data-minutes="10">10</button>
+        <button class="duration-button" data-minutes="12">12</button>
+        <button class="duration-button" data-minutes="15">15</button>
+        <button class="duration-button" data-minutes="20">20</button>
+        <button class="duration-button" id="customBtn">+</button>
       </div>
     </div>
   </div>
 
-  <script>
-    // --- State Variables ---
-    let appMode = 'timer'; // 'timer' or 'stopwatch'
-    let buttonDurations = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
-    let selectedDuration = buttonDurations[7] * 60; // Default to 8 mins (index 7)
-    let timerDuration = selectedDuration;
-    let remainingTime = timerDuration;
-    let stopwatchElapsedTime = 0;
+<script>
+    const container = document.querySelector('.container');
+    const categoryMap = {};
+    let studyLog = [];
+    let currentStudy = null;
     let timerInterval = null;
-    let running = false;
-    let isPaused = false; // Tracks explicit pause state (via button)
-    let isOverlayPaused = false; // Timer specific: Tracks if timer paused *because* overlay is open
-    let prevRunning = false; // Timer specific: State before overlay shown
-    let overlayActive = false; // Is the duration selection overlay visible?
+    let remainingTime = 0;
+    let timerDuration = 0;
+    let isPaused = false;
+    let selectionStartTime = null;
 
-    // --- Long Press Variables ---
-    let mainDisplayLongPressTimer = null;
-    let isMainDisplayLongPress = false;
-    const MAIN_LONG_PRESS_DURATION = 500;
+    const studyForm = document.getElementById('studyForm');
+    const controlsPanel = document.getElementById('controlsPanel');
+    const addTimeControls = document.querySelector('.add-time-controls');
+    const categorySelect = document.getElementById('studyCategory');
+    const subtypeWrapper = document.getElementById('subtypeWrapper');
+    const startStudyBtn = document.getElementById('startStudyBtn');
+    const timeSelectOverlay = document.getElementById('timeSelectOverlay');
+    const durationGroup = document.querySelector('.duration-group');
+    const timerDisplay = document.getElementById('timerDisplay');
+    const startPauseBtn = document.getElementById('startPauseBtn');
+    const completeBtn = document.getElementById('completeBtn');
+    const toggleLogBtn = document.getElementById('toggleLogBtn');
+    const logPanel = document.getElementById('logPanel');
+    const logHeader = document.getElementById('logHeader');
+    const downloadLogBtn = document.getElementById('downloadLogBtn');
+    const editLogBtn = document.getElementById('editLogBtn');
+    const logContent = document.getElementById('logContent');
 
-    let durationBtnLongPressTimer = null;
-    let isDurationBtnLongPress = false; // Flag set during/after duration button long press/edit
-    let editingButtonIndex = null; // Track which button index is being edited (null if none)
-    const DURATION_BTN_LONG_PRESS_DURATION = 600;
+    categoryMap['Body CT'] = ["Abdomen/Pelvis","Chest","CAP","A/P Runoff","GI Bleed","Dissection Protocol","Other"];
+    categoryMap['Ultrasound'] = ["RUQ","Limited Abdomen","Complete Abdomen","OB","Non-OB Pelvis","Scrotal","DVT","Venous Extremity","Arterial","Other"];
+    categoryMap['MRI'] = ["Spine","Brain","Other"];
+    categoryMap['Other CT'] = ["MSK","Other"];
 
-    // --- DOM Elements ---
-    const mainContainer = document.getElementById("mainContainer");
-    const timerDisplay = document.getElementById("timerDisplay");
-    const startPauseBtn = document.getElementById("startPauseBtn");
-    const resetBtn = document.getElementById("resetBtn");
-    const durationGroup = document.getElementById("durationGroup");
-    const overlay = document.getElementById("overlay");
+    function populateSubtypes() {
+      const selectedCategory = categorySelect.value;
+      const opts = categoryMap[selectedCategory] || [];
+      subtypeWrapper.innerHTML = ''; // Clear previous content
 
-    // --- Core Functions ---
-
-    function formatTime(totalSeconds) {
-      const hours = Math.floor(totalSeconds / 3600);
-      const minutes = Math.floor((totalSeconds % 3600) / 60);
-      const seconds = totalSeconds % 60;
-      if (hours > 0) {
-        return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-      } else {
-        return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-      }
-    }
-
-    function updateDisplay() {
-        if (appMode === 'timer') {
-            timerDisplay.textContent = formatTime(remainingTime);
-        } else {
-            timerDisplay.textContent = formatTime(stopwatchElapsedTime);
-        }
-        if (overlayActive && appMode === 'timer') {
-            updateActiveDurationButtonVisuals();
-        }
-    }
-
-    function updateActiveDurationButtonVisuals() {
-        document.querySelectorAll('.duration-group button').forEach(b => {
-            if (parseInt(b.dataset.minutes) * 60 === selectedDuration) {
-                b.classList.add("active");
-            } else {
-                b.classList.remove("active");
-            }
+      if (selectedCategory === 'Body CT') {
+        // Create checkboxes for Body CT
+        opts.forEach(o => {
+          const label = document.createElement('label');
+          label.className = 'checkbox-label';
+          
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.value = o;
+          
+          label.appendChild(checkbox);
+          label.appendChild(document.createTextNode(o));
+          subtypeWrapper.appendChild(label);
         });
-    }
-
-    function updateBackground() {
-      mainContainer.classList.remove("pulse", "fast-pulse", "stopwatch-mode", "paused-state");
-      mainContainer.style.background = "";
-      if (isPaused && !isOverlayPaused) {
-          mainContainer.classList.add("paused-state"); return;
-      }
-      if (appMode === 'stopwatch') {
-        mainContainer.classList.add("stopwatch-mode"); return;
-      }
-      if (remainingTime <= 0) {
-        mainContainer.style.background = "#1565c0"; return;
-      }
-      if (!running && !isPaused) {
-         mainContainer.style.background = "#1e1e1e"; return;
-      }
-      if (running) {
-          if (remainingTime > 120) {
-            const frac = (timerDuration - remainingTime)/(timerDuration-120);
-            const red = Math.floor(30 + frac*40);
-            const green = Math.floor(30 - frac*30);
-            const blue = Math.floor(30 - frac*30);
-            mainContainer.style.background = `rgb(${red},${green},${blue})`;
-          } else if (remainingTime > 20) {
-            mainContainer.classList.add("pulse");
-          } else {
-            mainContainer.classList.add("fast-pulse");
-          }
-      }
-    }
-
-    function tick() {
-      if (appMode === 'timer') {
-        if (remainingTime > 0) { remainingTime--; }
-        if (remainingTime <= 0) {
-          clearInterval(timerInterval); timerInterval = null;
-          running = false; startPauseBtn.textContent = "Start";
-        }
       } else {
-        stopwatchElapsedTime++;
+        // Create a standard select dropdown for other categories
+        const select = document.createElement('select');
+        select.disabled = opts.length === 0;
+        opts.forEach(o => {
+          const opt = document.createElement('option');
+          opt.value = o;
+          opt.text = o;
+          select.appendChild(opt);
+        });
+        subtypeWrapper.appendChild(select);
       }
-      updateDisplay();
-      updateBackground();
     }
+    
+    categorySelect.addEventListener('change', populateSubtypes);
+    document.addEventListener('DOMContentLoaded', populateSubtypes);
 
-    function startAction() {
-      if (running) return;
-      if (editingButtonIndex !== null) { cancelDurationInput(); }
-      running = true; isPaused = false;
-      if (appMode === 'timer') { isOverlayPaused = false; }
-      startPauseBtn.textContent = "Pause";
-      clearInterval(timerInterval);
+    startStudyBtn.addEventListener('click', () => {
+      const cat = categorySelect.value;
+      let sub = '';
+
+      if (cat === 'Body CT') {
+        const checkedBoxes = subtypeWrapper.querySelectorAll('input[type="checkbox"]:checked');
+        if (checkedBoxes.length === 0) {
+          alert("Please select at least one Body CT subtype.");
+          return;
+        }
+        sub = Array.from(checkedBoxes).map(cb => cb.value).join(' + ');
+      } else {
+        const select = subtypeWrapper.querySelector('select');
+        sub = select ? select.value : '';
+      }
+      
+      if (!cat || !sub) {
+        alert("A valid category and subtype must be selected.");
+        return;
+      }
+      currentStudy = { cat, sub, start: Date.now() };
+      selectionStartTime = Date.now();
+      studyForm.style.display = 'none';
+      controlsPanel.style.display = 'flex';
+      timeSelectOverlay.style.display = 'flex';
+      durationGroup.classList.add('pulse-blue-glow');
+    });
+
+    // --- All other functions remain unchanged ---
+    // (Pasting them here for completeness)
+
+    document.querySelectorAll('.duration-button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        let choiceTime = 0;
+        if (btn.id === 'customBtn') {
+            const minutesStr = prompt('Enter custom minutes:');
+            if (minutesStr === null) return;
+            const minutes = parseInt(minutesStr, 10);
+            if (isNaN(minutes) || minutes <= 0) { alert("Please enter a valid positive number."); return; }
+            choiceTime = minutes * 60;
+        } else { choiceTime = parseInt(btn.dataset.minutes, 10) * 60; }
+        const decisionDelay = Math.floor((Date.now() - selectionStartTime) / 1000);
+        timerDuration = choiceTime;
+        remainingTime = Math.max(choiceTime - decisionDelay, 0);
+        updateDisplay();
+        timeSelectOverlay.style.display = 'none';
+        durationGroup.classList.remove('pulse-blue-glow');
+        startPauseBtn.textContent = 'Pause';
+        startTimer();
+      });
+    });
+    function formatTime(sec, useHours = false) {
+      const hours = Math.floor(sec / 3600);
+      const minutes = Math.floor((sec % 3600) / 60);
+      const seconds = sec % 60;
+      if (useHours) {
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      }
+      return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    };
+    function updateDisplay() { timerDisplay.textContent = formatTime(remainingTime); };
+    function updateBackground() {
+      container.classList.remove("pulse", "fast-pulse", "paused");
+      container.style.background = ""; 
+      if (isPaused) { container.classList.add("paused"); return; }
+      if (timerInterval === null) { container.style.background = "#1e1e1e"; return; }
+      if (remainingTime > 120) {
+        const criticalWindow = timerDuration > 120 ? timerDuration - 120 : 1;
+        const timeElapsedInWindow = timerDuration - remainingTime;
+        const frac = Math.min(timeElapsedInWindow / criticalWindow, 1);
+        const red = Math.floor(30 + frac * 40);
+        const green = Math.floor(30 - frac * 30);
+        const blue = Math.floor(30 - frac * 30);
+        container.style.background = `rgb(${red},${green},${blue})`;
+      } else if (remainingTime > 20) { container.classList.add("pulse");
+      } else { container.classList.add("fast-pulse"); }
+    };
+    function tick() {
+      if (remainingTime > 0) { remainingTime--; }
+      if (remainingTime <= 0) { stopTimer(); }
+      updateDisplay(); updateBackground();
+    };
+    function startTimer() {
+      if (timerInterval) return;
+      isPaused = false;
       timerInterval = setInterval(tick, 1000);
       updateBackground();
-    }
-
-    function pauseAction() {
-      if (!running) return;
-      if (editingButtonIndex !== null) { cancelDurationInput(); }
-      running = false; isPaused = true;
-      if (appMode === 'timer') { isOverlayPaused = false; }
-      clearInterval(timerInterval); timerInterval = null;
-      startPauseBtn.textContent = "Resume";
+    };
+    function stopTimer() { clearInterval(timerInterval); timerInterval = null; updateBackground(); };
+    function resetUI() {
+        stopTimer();
+        studyForm.style.display = 'flex';
+        controlsPanel.style.display = 'none';
+        timerDisplay.textContent = '00:00';
+        container.classList.remove('paused', 'pulse', 'fast-pulse');
+        container.style.background = '#1e1e1e';
+        currentStudy = null; isPaused = false;
+    };
+    timerDisplay.addEventListener('click', () => {
+        if (controlsPanel.style.display === 'flex') {
+            const isHidden = addTimeControls.style.display === 'none';
+            addTimeControls.style.display = isHidden ? 'flex' : 'none';
+        }
+    });
+    completeBtn.addEventListener('click', () => {
+      if (!currentStudy) return;
+      stopTimer();
+      const finishTime = Date.now();
+      const actualSec = Math.floor((finishTime - currentStudy.start) / 1000);
+      const targetSec = timerDuration;
+      studyLog.push({ category: currentStudy.cat, subtype: currentStudy.sub, startTime: currentStudy.start, finishTime: finishTime, target: targetSec, actual: actualSec });
+      renderLog();
+      if (logPanel.classList.contains('open')) { logPanel.classList.remove('open'); }
+      addTimeControls.style.display = 'none'; 
+      resetUI();
+    });
+    startPauseBtn.addEventListener('click', () => {
+      isPaused = !isPaused;
+      if (isPaused) { stopTimer(); startPauseBtn.textContent = 'Resume';
+      } else { startTimer(); startPauseBtn.textContent = 'Pause'; }
       updateBackground();
-    }
-
-    function resetAction() {
-      if (editingButtonIndex !== null) { cancelDurationInput(); }
-      clearInterval(timerInterval); timerInterval = null;
-      running = false; isPaused = false;
-      startPauseBtn.textContent = "Start";
-      if (appMode === 'timer') {
-        isOverlayPaused = false;
-        remainingTime = selectedDuration; timerDuration = selectedDuration;
-      } else {
-        stopwatchElapsedTime = 0;
-      }
-      updateDisplay(); updateBackground();
-    }
-
-    function toggleMode() {
-        if (editingButtonIndex !== null) { cancelDurationInput(); }
-        clearInterval(timerInterval); timerInterval = null;
-        running = false; isPaused = false;
-        if (appMode === 'timer') {
-            appMode = 'stopwatch';
-            if (overlayActive) hideOverlay();
-        } else {
-            appMode = 'timer';
+    });
+    document.querySelectorAll('.add-time-controls button').forEach(btn => {
+        const secondsToAdd = parseInt(btn.id.replace('add','').replace('Btn','')) * 60;
+        btn.addEventListener('click', () => { remainingTime += secondsToAdd; if (isPaused) { updateDisplay(); } });
+    });
+    toggleLogBtn.addEventListener('click', () => {
+        const isOpen = logPanel.classList.toggle('open');
+        if (!isOpen && logPanel.classList.contains('editing')) {
+            logPanel.classList.remove('editing'); editLogBtn.textContent = 'Edit';
         }
-        resetAction();
-    }
-
-    // --- Duration Button Editing Functions ---
-
-    function showDurationInput(button, index) {
-        if (editingButtonIndex !== null && editingButtonIndex !== index) {
-             const otherButton = durationGroup.querySelector(`button[data-index="${editingButtonIndex}"]`);
-             if (otherButton) {
-                 const otherInput = otherButton.querySelector('.duration-input');
-                 if (otherInput) saveDurationInput(otherInput); else cancelDurationInput();
-             }
-        } else if (editingButtonIndex === index) { return; }
-
-        if (appMode === 'timer' && (running && !isOverlayPaused)) {
-             console.log("Cannot edit duration while timer is actively running."); return;
+    });
+    editLogBtn.addEventListener('click', () => {
+        const isEditing = logPanel.classList.toggle('editing');
+        editLogBtn.textContent = isEditing ? 'Done' : 'Edit';
+    });
+    logContent.addEventListener('click', (e) => {
+        const deleteButton = e.target.closest('.delete-log-btn');
+        if (deleteButton) {
+            const index = parseInt(deleteButton.dataset.index, 10);
+            studyLog.splice(index, 1); renderLog();
         }
-
-        editingButtonIndex = index; isDurationBtnLongPress = true;
-        button.classList.add('editing');
-
-        const input = document.createElement('input');
-        input.type = 'number'; input.className = 'duration-input';
-        input.value = buttonDurations[index];
-        input.min = 1; input.max = 999;
-        input.setAttribute('data-index', index);
-        // *** Crucial: Stop click on input itself from bubbling to overlay ***
-        input.addEventListener('click', e => e.stopPropagation());
-        input.addEventListener('blur', handleInputBlur);
-        input.addEventListener('keydown', handleInputKeydown);
-        button.appendChild(input);
-        input.focus();
-        try { input.select(); } catch (e) { console.warn("Could not select input text."); }
-    }
-
-    function handleInputBlur(e) {
-        // Delay allows other potential events (like button clicks) to process first
-        setTimeout(() => {
-            // Check if still editing (not cancelled by Escape) and input still exists
-            if (editingButtonIndex !== null && e.target.parentNode) {
-                saveDurationInput(e.target);
-            }
-        }, 10);
-    }
-
-    function handleInputKeydown(e) {
-        if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); }
-        else if (e.key === 'Escape') { e.preventDefault(); cancelDurationInput(); }
-    }
-
-    function saveDurationInput(inputElement) {
-        if (!inputElement || editingButtonIndex === null) return;
-        const index = parseInt(inputElement.getAttribute('data-index'));
-        const button = durationGroup.querySelector(`button[data-index="${index}"]`);
-        let newValue = parseInt(inputElement.value);
-        if (isNaN(newValue) || newValue < 1) { newValue = 1; }
-        else if (newValue > 999) { newValue = 999; }
-        const previousValue = buttonDurations[index];
-        buttonDurations[index] = newValue;
-        if(button) {
-             const span = button.querySelector('span');
-             if (span) span.textContent = newValue;
-             button.dataset.minutes = newValue;
-        }
-        const wasSelectedDuration = selectedDuration === previousValue * 60;
-        cleanupInput(inputElement, button); // Clean up happens *before* potential reset
-        if (wasSelectedDuration && appMode === 'timer' && !running && !isPaused) {
-             selectedDuration = newValue * 60; timerDuration = selectedDuration;
-             resetAction(); // Resets display to new value
-             updateActiveDurationButtonVisuals(); // Ensure it's visually active
-        } else if (appMode === 'timer') {
-             updateActiveDurationButtonVisuals(); // Update active state if needed
-        }
-    }
-
-    function cancelDurationInput() {
-        if (editingButtonIndex === null) return;
-        const index = editingButtonIndex;
-        const button = durationGroup.querySelector(`button[data-index="${index}"]`);
-        const inputElement = button ? button.querySelector('.duration-input') : null;
-        cleanupInput(inputElement, button);
-    }
-
-    function cleanupInput(inputElement, button) {
-        if (inputElement) {
-            inputElement.removeEventListener('blur', handleInputBlur);
-            inputElement.removeEventListener('keydown', handleInputKeydown);
-            inputElement.removeEventListener('click', e => e.stopPropagation()); // Clean up input click listener
-            inputElement.remove();
-        }
-         if (button) { button.classList.remove('editing'); }
-        editingButtonIndex = null;
-        // Short delay helps prevent immediate re-trigger / conflicts
-        setTimeout(() => { isDurationBtnLongPress = false; }, 50);
-    }
-
-    // --- Timer Mode Specific Functions (Overlay) ---
-
-    function populateDurationButtons() {
-      durationGroup.innerHTML = "";
-      buttonDurations.forEach((minutes, index) => {
-        const btn = document.createElement("button");
-        const span = document.createElement("span");
-        span.textContent = minutes; btn.appendChild(span);
-        btn.dataset.minutes = minutes; btn.dataset.index = index;
-        if (appMode === 'timer' && selectedDuration === minutes * 60) { btn.classList.add("active"); }
-
-        // Click: Select Duration
-        btn.addEventListener("click", (e) => {
-          // *** Crucial: Stop click from reaching overlay listener ***
-          e.stopPropagation();
-          if (isDurationBtnLongPress) { return; } // Avoid click after long press edit
-          if (appMode === 'timer' && (!running || isOverlayPaused)) {
-             if (editingButtonIndex !== null && editingButtonIndex !== index) {
-                 // If editing another button, save/cancel it first
-                 const otherButton = durationGroup.querySelector(`button[data-index="${editingButtonIndex}"]`);
-                 const otherInput = otherButton ? otherButton.querySelector('.duration-input') : null;
-                 if(otherInput) saveDurationInput(otherInput); else cancelDurationInput();
-             } else if (editingButtonIndex === index) {
-                 // Clicked the button being edited -> Save it
-                 saveDurationInput(btn.querySelector('.duration-input')); return;
-             }
-             // Proceed with selection
-             selectedDuration = parseInt(btn.dataset.minutes) * 60;
-             timerDuration = selectedDuration;
-             updateActiveDurationButtonVisuals();
-             resetAction(); // Reset timer to new duration
-             hideOverlay(); // Close overlay
-          }
+    });
+    function renderLog() {
+        logContent.innerHTML = '';
+        logHeader.style.display = studyLog.length > 0 ? 'flex' : 'none';
+        studyLog.forEach((s, i) => {
+            const entryDiv = document.createElement('div'); entryDiv.className = 'log-entry';
+            const textSpan = document.createElement('span'); textSpan.className = 'log-entry-text';
+            textSpan.textContent = `${i + 1}. ${s.category} / ${s.subtype} — target ${formatTime(s.target)}, actual ${formatTime(s.actual)}`;
+            const deleteBtn = document.createElement('button'); deleteBtn.className = 'delete-log-btn';
+            deleteBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
+            deleteBtn.dataset.index = i; deleteBtn.title = "Delete entry";
+            entryDiv.appendChild(textSpan); entryDiv.appendChild(deleteBtn); logContent.appendChild(entryDiv);
         });
-
-        // Long Press: Edit Duration
-        btn.addEventListener("mousedown", (e) => {
-            if (appMode !== 'timer' || !overlayActive) return;
-             e.preventDefault(); clearTimeout(durationBtnLongPressTimer);
-             isDurationBtnLongPress = false;
-             durationBtnLongPressTimer = setTimeout(() => {
-                 if (appMode === 'timer' && overlayActive && (!running || isOverlayPaused)) {
-                    showDurationInput(btn, index);
-                 }
-             }, DURATION_BTN_LONG_PRESS_DURATION);
+    };
+    function escapeCSV(field) {
+        if (field === null || field === undefined) return '';
+        let str = String(field);
+        if (str.search(/("|,|\n)/g) >= 0) { str = '"' + str.replace(/"/g, '""') + '"'; }
+        return str;
+    };
+    function downloadCSV() {
+        if (studyLog.length === 0) { alert("Log is empty. Nothing to download."); return; }
+        const headers = ['Category', 'Subtype', 'Start Time', 'Finish Time', 'Target Duration', 'Actual Duration', 'Performance (%)'];
+        const rows = studyLog.map(log => {
+            const performance = log.target > 0 ? (((log.actual - log.target) / log.target) * 100).toFixed(1) : 'N/A';
+            return [log.category, log.subtype, new Date(log.startTime).toLocaleString(), new Date(log.finishTime).toLocaleString(), formatTime(log.target, true), formatTime(log.actual, true), performance].map(escapeCSV);
         });
-        btn.addEventListener("mouseup", () => { clearTimeout(durationBtnLongPressTimer); });
-        btn.addEventListener("mouseleave", () => { clearTimeout(durationBtnLongPressTimer); });
-
-        durationGroup.appendChild(btn);
-      });
-    }
-
-    function pauseForOverlay() {
-        if (appMode === 'timer' && running) {
-            if (editingButtonIndex !== null) { cancelDurationInput(); } // Cancel edit if pausing
-            clearInterval(timerInterval); timerInterval = null;
-            isOverlayPaused = true;
-            updateBackground(); // Update bg (won't be yellow)
-        }
-    }
-
-    function showOverlay() {
-      if (overlayActive || appMode !== 'timer') return;
-       if (editingButtonIndex !== null) { cancelDurationInput(); } // Cancel edits before showing
-      overlay.style.display = "flex"; overlayActive = true;
-      prevRunning = running || (isPaused && !isOverlayPaused);
-      populateDurationButtons(); // Populate/Refresh buttons
-      pauseForOverlay(); // Pause timer if needed
-    }
-
-    function hideOverlay() {
-      if (!overlayActive) return;
-      // If editing, trigger blur on the input to save/cancel via its handler
-      if (editingButtonIndex !== null) {
-          const inputElement = durationGroup.querySelector('.duration-input');
-          if (inputElement) { inputElement.blur(); }
-          else { cancelDurationInput(); } // Fallback if input missing
-          // Add slight delay to allow blur handler (which calls save/cancel) to finish
-          setTimeout(finishHideOverlay, 30);
-      } else {
-           finishHideOverlay(); // Hide immediately if not editing
-      }
-    }
-
-    // Separated logic for actually hiding after potential save delay
-    function finishHideOverlay() {
-        if (!overlayActive) return; // Check again in case state changed during delay
-        overlay.style.display = "none"; overlayActive = false;
-        // Resume timer logic
-        if (appMode === 'timer') {
-            if (isOverlayPaused) {
-                isOverlayPaused = false;
-                if (prevRunning && !isPaused) { startAction(); } // Resume if running before
-                else { updateBackground(); } // Update background if paused/reset before
-            }
-        }
-        prevRunning = false; // Clear state tracking
-    }
-
-    // --- Main Display Event Listeners ---
-    timerDisplay.addEventListener("mousedown", (e) => {
-      e.preventDefault();
-       if (editingButtonIndex !== null) { cancelDurationInput(); } // Cancel edit if interacting
-       isMainDisplayLongPress = false; clearTimeout(mainDisplayLongPressTimer);
-       mainDisplayLongPressTimer = setTimeout(() => {
-         isMainDisplayLongPress = true; toggleMode();
-       }, MAIN_LONG_PRESS_DURATION);
-    });
-    timerDisplay.addEventListener("mouseup", (e) => {
-      clearTimeout(mainDisplayLongPressTimer);
-      if (!isMainDisplayLongPress && appMode === 'timer') {
-         e.stopPropagation(); // Prevent triggering overlay close listener
-         showOverlay();
-      }
-    });
-    timerDisplay.addEventListener("mouseleave", () => { clearTimeout(mainDisplayLongPressTimer); });
-
-
-    // --- Overlay Click Listener (Replaces Document Listener) ---
-    overlay.addEventListener('click', (e) => {
-        // Check if the click *originated* directly on the overlay background
-        // or the duration group's background. Clicks on buttons/inputs inside
-        // the group will have a different e.target and should be stopped
-        // by their own stopPropagation calls.
-        if (e.target === overlay || e.target === durationGroup) {
-            hideOverlay();
-        }
-    });
-
-
-    // --- Control Button Listeners ---
-        // --- Global Click Listener (Handles Closing Overlay) ---
-    document.addEventListener("click", (e) => {
-        // If overlay is active...
-        if (overlayActive) {
-            // Check if the click target is OUTSIDE the duration group container
-            // AND also not the main timer display itself (handled by its mouseup)
-            if (!durationGroup.contains(e.target) && e.target !== timerDisplay) {
-                // If we are editing a button, the hideOverlay function will handle saving/cancelling.
-                hideOverlay();
-            }
-            // Optional: Handle clicks *inside* the group but not on buttons/inputs (gap space)
-            // else if (durationGroup.contains(e.target) && e.target === durationGroup) {
-            //      // Click was on the grey background of the duration group
-            //      if (editingButtonIndex !== null) {
-            //           // If editing, save/cancel the input
-            //           const inputElement = durationGroup.querySelector('.duration-input');
-            //           if (inputElement) inputElement.blur(); // Trigger save via blur
-            //      }
-            //      // Decide whether to close overlay or not on gap click (currently does not close)
-            // }
-        }
-    });
-    startPauseBtn.addEventListener("click", (e) => {
-      e.stopPropagation(); // Good practice
-      if (running) { pauseAction(); } else { startAction(); }
-    });
-    resetBtn.addEventListener("click", (e) => {
-      e.stopPropagation(); // Good practice
-      resetAction();
-    });
-
-    // --- Initialization ---
-    updateDisplay(); // Set initial time
-    updateBackground(); // Set initial background
-
-  </script>
+        let csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n" + rows.map(e => e.join(",")).join("\n");
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a"); link.setAttribute("href", encodedUri);
+        const timestamp = new Date().toISOString().split('T')[0];
+        link.setAttribute("download", `study_log_${timestamp}.csv`);
+        document.body.appendChild(link); link.click(); document.body.removeChild(link);
+    };
+    downloadLogBtn.addEventListener('click', downloadCSV);
+</script>
 </body>
 </html>
